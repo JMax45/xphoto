@@ -1,1 +1,1 @@
-[Protonfile](https://www.jz-software.com/web/protonfile) sdk
+Documentation available here: https://jmax45.gitbook.io/xphoto/
