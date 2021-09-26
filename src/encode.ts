@@ -1,6 +1,7 @@
 import jimp from 'jimp';
 import fs from 'fs';
 import binary from './helpers/binary';
+import Cryptr from 'cryptr';
 
 function change(val1: string, val2: number) {
 	if (val1 === '0') {
@@ -116,7 +117,8 @@ export default async (
 	input: string,
 	messageData: string,
 	output: string,
-	isFile: boolean
+	isFile: boolean,
+	password?: string
 ) => {
 	let data: any;
 	if (isFile) {
@@ -126,6 +128,10 @@ export default async (
 		};
 	} else {
 		data = { data: messageData };
+	}
+	if (password) {
+		const cryptr = new Cryptr(password);
+		data.data = cryptr.encrypt(data.data);
 	}
 	const message = binary.encode(JSON.stringify(data)).split(' ');
 

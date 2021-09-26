@@ -6,6 +6,7 @@ import path from 'path';
 import decode from './decode';
 import Jimp from 'jimp';
 import fs from 'fs';
+import Cryptr from 'cryptr';
 
 function isPathAbsolute(path: string) {
 	return /^(?:\/|[a-z]+:\/\/)/.test(path);
@@ -19,11 +20,16 @@ function isPathAbsolute(path: string) {
 			isPathAbsolute(args.i) ? args.i : path.join(process.cwd(), args.i),
 			args.f || args.m,
 			args.o,
-			args.f ? true : false
+			args.f ? true : false,
+			args.password ? args.password : undefined
 		);
 	} else if (args.decode) {
 		try {
 			const decoded = JSON.parse(await decode(await Jimp.read(args.i)));
+			if (args.password) {
+				const cryptr = new Cryptr(args.password);
+				decoded.data = cryptr.decrypt(decoded.data);
+			}
 			if (decoded.file) {
 				fs.writeFileSync(
 					args.o || decoded.file.filename,
