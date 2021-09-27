@@ -1,7 +1,8 @@
 import jimp from 'jimp';
-import fs from 'fs';
 import binary from './helpers/binary';
 import Cryptr from 'cryptr';
+import imageToArrayv2 from './helpers/imageToArray';
+import Jimp from 'jimp';
 
 function change(val1: string, val2: number) {
 	if (val1 === '0') {
@@ -42,26 +43,10 @@ async function arrayToImage(image: any, arr: any) {
 	return image;
 }
 
-async function imageToArray(image: any, message: any, output: string) {
-	const { width, height } = image.bitmap;
-	let isScanning = true;
-	const pixels = [];
-	let x = 0;
-	let y = 0;
-	while (isScanning) {
-		const { r, g, b, a } = jimp.intToRGBA(image.getPixelColor(x, y));
-		pixels.push([r, g, b, x, y, a]);
-		if (x === width - 1) {
-			x = 0;
-			y += 1;
-		}
-		if (y >= height - 1 && x >= width - 2) {
-			isScanning = false;
-		}
-		x += 1;
-	}
+async function imageToArray(image: Jimp, message: any) {
 	let i = 0;
 	let index = 0;
+	const pixels = imageToArrayv2(image);
 	const changes = [];
 	for (let byte of message) {
 		byte = byte.split('');
@@ -109,46 +94,45 @@ async function imageToArray(image: any, message: any, output: string) {
 		index++;
 	}
 	const encoded = await arrayToImage(image, changes);
-	encoded.write(output);
 	return encoded;
 }
 
-export default async (
-	input: string,
-	messageData: string,
-	output: string,
-	isFile: boolean,
-	password?: string
-) => {
-	let data: any;
-	if (isFile) {
-		data = { data: fs.readFileSync(messageData, 'base64') };
-		data.file = {
-			filename: messageData.split('/')[messageData.split('/').length - 1],
-		};
-	} else {
-		data = { data: messageData };
-	}
-	if (password) {
-		const cryptr = new Cryptr(password);
-		data.data = cryptr.encrypt(data.data);
-	}
-	const message = binary.encode(JSON.stringify(data)).split(' ');
+interface optionalParams {
+	password?: string;
+	payload?: Object;
+}
 
-	const image = await jimp.read(input);
+export default async (image: Buffer, data: string, params?: optionalParams) => {
+	if (params && params.password) {
+		const cryptr = new Cryptr(params.password);
+		data = cryptr.encrypt(data);
+	}
+	let obj: any = {
+		data,
+	};
+	if (params && params.payload) {
+		const { payload } = params;
+		obj = { ...obj, ...payload };
+	}
+	const message = binary.encode(JSON.stringify(obj)).split(' ');
+
+	console.log(message);
+
+	const coverImage = await jimp.read(image);
 	console.info(
 		message.length * 3,
 		'bytes required,',
-		image.bitmap.width * image.bitmap.height,
+		coverImage.bitmap.width * coverImage.bitmap.height,
 		'available'
 	);
 
-	if (message.length * 3 > image.bitmap.width * image.bitmap.height) {
+	if (message.length * 3 > coverImage.bitmap.width * coverImage.bitmap.height) {
 		console.error('data size is bigger than available space, encoding stopped');
 		process.exit(1);
 	}
 
 	console.info('encoding...');
 
-	imageToArray(image, message, output);
+	const encoded: Jimp = await imageToArray(coverImage, message);
+	return encoded;
 };

@@ -16,13 +16,24 @@ function isPathAbsolute(path: string) {
 	const args = minimist(process.argv.slice(2));
 
 	if (args.encode) {
-		encode(
-			isPathAbsolute(args.i) ? args.i : path.join(process.cwd(), args.i),
-			args.f || args.m,
-			args.o,
-			args.f ? true : false,
-			args.password ? args.password : undefined
+		const filePath = isPathAbsolute(args.i)
+			? args.i
+			: path.join(process.cwd(), args.i);
+		const payload: any = {};
+		if (args.f) {
+			payload.file = {
+				filename: args.i.split('/')[args.i.split('/').length - 1],
+			};
+		}
+		const encoded = await encode(
+			fs.readFileSync(filePath),
+			args.f ? fs.readFileSync(args.f, 'base64') : args.m,
+			{
+				payload,
+				password: args.password,
+			}
 		);
+		encoded.write(args.o);
 	} else if (args.decode) {
 		try {
 			const decoded = JSON.parse(await decode(await Jimp.read(args.i)));
