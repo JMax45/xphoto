@@ -136,3 +136,5 @@ export default async (image: Buffer, data: string, params?: optionalParams) => {
 	const encoded: Jimp = await imageToArray(coverImage, message);
 	return encoded;
 };
+
+export { optionalParams };
